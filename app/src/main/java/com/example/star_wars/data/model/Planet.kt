@@ -6,7 +6,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.android.parcel.Parcelize
 
-@Entity
+@Entity(indices = [androidx.room.Index(value = ["name"], unique = true)])
 @Parcelize
 data class Planet(
     @PrimaryKey (autoGenerate = true)

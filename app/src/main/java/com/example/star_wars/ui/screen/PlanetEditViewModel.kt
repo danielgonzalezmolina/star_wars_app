@@ -5,19 +5,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.star_wars.data.model.Planet // USAR EL MODELO DE DATA
+import com.example.star_wars.data.model.Planet
 import com.example.star_wars.data.repository.PlanetRepository
+import com.example.star_wars.util.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PlanetViewModel @Inject constructor(
-    private val repository: PlanetRepository
+class PlanetEditViewModel @Inject constructor(
+    private val repository: PlanetRepository,
+    private val notificationHelper: NotificationHelper
 ) : ViewModel() {
-
-    var planetList by mutableStateOf(listOf<Planet>())
-        private set
 
     var selectedPlanet by mutableStateOf<Planet?>(null)
         private set
@@ -28,46 +27,37 @@ class PlanetViewModel @Inject constructor(
     var duplicateName by mutableStateOf("")
         private set
 
-    init {
-        loadPlanets()
-    }
-
-    private fun loadPlanets() {
-        viewModelScope.launch {
-            repository.getPlanetsFlow().collect { list ->
-                planetList = list
-            }
+    fun loadPlanet(planetId: Int) {
+        if (planetId == 0) {
+            selectedPlanet = Planet()
+            return
         }
-    }
-
-    fun onPlanetSelected(planet: Planet?) {
-        selectedPlanet = planet
+        viewModelScope.launch {
+            selectedPlanet = repository.getPlanetById(planetId)
+        }
     }
 
     fun dismissError() {
         showDuplicateError = false
     }
 
-    fun savePlanet(planet: Planet) {
+    fun savePlanet(planet: Planet, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            if (selectedPlanet == null) {
-                if (repository.checkIfPlanetExists(planet.id)) {
+            val isEditing = planet.id != 0
+            if (!isEditing) {
+                if (repository.checkIfPlanetExists(planet.id) || repository.checkIfPlanetNameExists(planet.name)) {
                     duplicateName = planet.name
                     showDuplicateError = true
+                    onResult(false)
                 } else {
                     repository.addPlanet(planet)
-                    selectedPlanet = null
+                    notificationHelper.showCreationNotification(planet.name, isPlanet = true)
+                    onResult(true)
                 }
             } else {
                 repository.updatePlanet(planet)
-                selectedPlanet = null
+                onResult(true)
             }
-        }
-    }
-
-    fun deletePlanet(planet: Planet) {
-        viewModelScope.launch {
-            repository.deletePlanet(planet)
         }
     }
 }

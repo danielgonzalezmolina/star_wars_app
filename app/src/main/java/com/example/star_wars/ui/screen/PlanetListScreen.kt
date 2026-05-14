@@ -1,83 +1,43 @@
 package com.example.star_wars.ui.screen
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Landscape
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.composables.Earth
 import com.example.star_wars.data.model.Planet
+import com.example.star_wars.data.model.PlanetWithFilms
+import com.example.star_wars.ui.composables.SearchBar
 import kotlinx.coroutines.launch
 
 @Composable
 fun PlanetListScreen(
     modifier: Modifier = Modifier,
-    planetList: List<Planet>,
+    planetList: List<PlanetWithFilms>,
     onPlanetClick: (Planet) -> Unit,
-    onDeletePlanet: (Planet) -> Unit
+    onDeletePlanet: (PlanetWithFilms) -> Unit
 ) {
-    var planetToDelete by remember { mutableStateOf<Planet?>(null) }
+    var planetToDelete by remember { mutableStateOf<PlanetWithFilms?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
     var selectedClimate by remember { mutableStateOf<String?>(null) }
 
     val availableClimates = remember(planetList) {
-        planetList.flatMap { it.climate.split(",") }
+        planetList.flatMap { it.planet.climate.split(",") }
             .map { it.trim().lowercase() }
             .filter { it.isNotEmpty() && it != "unknown" }
             .distinct()
@@ -85,23 +45,23 @@ fun PlanetListScreen(
     }
 
     val filteredList = remember(searchQuery, selectedClimate, planetList) {
-        planetList.filter { planet ->
-            val matchesSearch = planet.name.contains(searchQuery, ignoreCase = true)
+        planetList.filter { item ->
+            val matchesSearch = item.planet.name.contains(searchQuery, ignoreCase = true)
             val matchesFilter = selectedClimate == null ||
-                    planet.climate.contains(selectedClimate!!, ignoreCase = true)
+                    item.planet.climate.contains(selectedClimate!!, ignoreCase = true)
             matchesSearch && matchesFilter
         }
     }
 
-    planetToDelete?.let { planet ->
+    planetToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { planetToDelete = null },
             title = { Text("¿Eliminar planeta?") },
-            text = { Text("¿Estás seguro de que quieres borrar ${planet.name}?") },
+            text = { Text("¿Estás seguro de que quieres borrar ${item.planet.name}?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDeletePlanet(planet)
+                        onDeletePlanet(item)
                         planetToDelete = null
                         scope.launch { snackbarHostState.showSnackbar("Planeta eliminado") }
                     }
@@ -133,21 +93,17 @@ fun PlanetListScreen(
 
 @Composable
 fun PlanetListContent(
-    planetList: List<Planet>,
+    planetList: List<PlanetWithFilms>,
     searchQuery: String,
     selectedClimate: String?,
     availableClimates: List<String>,
     onQueryChange: (String) -> Unit,
     onFilterChange: (String?) -> Unit,
     onPlanetClick: (Planet) -> Unit,
-    onDeleteClick: (Planet) -> Unit,
+    onDeleteClick: (PlanetWithFilms) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        /*Para mejorar los estilos y agregar nueva funcionalidad a la página, he añadido un
-        *buscador y una barra de filtros para filtrar por tipo de clima
-        */
-
         SearchBar(
             query = searchQuery,
             onQueryChange = onQueryChange
@@ -170,11 +126,11 @@ fun PlanetListContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                items(planetList, key = { it.name }) { planet ->
+                items(planetList, key = { it.planet.id }) { planetWithFilms ->
                     PlanetItem(
-                        planet = planet,
+                        planetWithFilms = planetWithFilms,
                         onPlanetClick = onPlanetClick,
-                        onDeleteClick = { onDeleteClick(planet) }
+                        onDeleteClick = { onDeleteClick(planetWithFilms) }
                     )
                 }
             }
@@ -182,14 +138,13 @@ fun PlanetListContent(
     }
 }
 
-
-
 @Composable
 fun PlanetItem(
-    planet: Planet,
+    planetWithFilms: PlanetWithFilms,
     onPlanetClick: (Planet) -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    val planet = planetWithFilms.planet
     val colorScheme = MaterialTheme.colorScheme
 
     Card(
@@ -200,7 +155,6 @@ fun PlanetItem(
         colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
-            // Icono de borrar
             IconButton(
                 onClick = onDeleteClick,
                 modifier = Modifier.align(Alignment.TopEnd)
@@ -219,10 +173,24 @@ fun PlanetItem(
 
                 Column {
                     Text(planet.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    // Adaptado a los campos reales de tu clase Planet:
                     PlanetAttribute(Icons.Default.Thermostat, "Clima", planet.climate)
                     PlanetAttribute(Icons.Default.Landscape, "Terreno", planet.terrain)
                     PlanetAttribute(Icons.Default.Groups, "Órbita", planet.orbital_period.toString())
+                    
+                    if (planetWithFilms.films.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Movie, null, modifier = Modifier.size(14.dp), tint = colorScheme.secondary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Películas: " + planetWithFilms.films.joinToString { it.title },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -231,7 +199,7 @@ fun PlanetItem(
 
 @Composable
 fun PlanetAttribute(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String
 ) {
@@ -263,47 +231,6 @@ fun PlanetAttribute(
     }
 }
 
-
-@Composable
-fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        placeholder = { Text("Buscar planeta...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Borrar",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        },
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        singleLine = true,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-        )
-    )
-}
-
 @Composable
 fun FilterOptionBar(
     selectedClimate: String?,
@@ -333,58 +260,5 @@ fun FilterOptionBar(
                 } else null
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PlanetListScreenPreview() {
-    MaterialTheme {
-        PlanetListScreen(
-            planetList = listOf(
-                Planet(
-                    id = 1,
-                    name = "Tatooine",
-                    climate = "Arid",
-                    terrain = "Desert",
-                    rotation_period = 23,
-                    orbital_period = 304,
-                    discovery_date = "1977-05-25",
-                    is_colonized = true
-                ),
-                Planet(
-                    id = 2,
-                    name = "Alderaan",
-                    climate = "Temperate",
-                    terrain = "Grasslands, Mountains",
-                    rotation_period = 24,
-                    orbital_period = 364,
-                    discovery_date = "1977-05-25",
-                    is_colonized = true
-                ),
-                Planet(
-                    id = 3,
-                    name = "Hoth",
-                    climate = "Frozen",
-                    terrain = "Tundra, Ice Caves",
-                    rotation_period = 23,
-                    orbital_period = 549,
-                    discovery_date = "1980-05-21",
-                    is_colonized = false
-                ),
-                Planet(
-                    id = 4,
-                    name = "Dagobah",
-                    climate = "Murky",
-                    terrain = "Swamp, Jungles",
-                    rotation_period = 23,
-                    orbital_period = 341,
-                    discovery_date = "1980-05-21",
-                    is_colonized = false
-                )
-            ),
-            onPlanetClick = {},
-            onDeletePlanet = {}
-        )
     }
 }
